@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Veículo em Three.js</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="module">
+        import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js";
+        import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js";
+        import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/loaders/GLTFLoader.js";
+
+        const scene = new THREE.Scene();
+
+        scene.background = new THREE.Color(0x000033); // Define a cor de fundo para azul
+
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Adicionar iluminação
+        const ambientLight = new THREE.AmbientLight(0xffffff, 7);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        scene.add(directionalLight);
+
+        const loader = new GLTFLoader();
+        let carModel;
+        // Adicionar um veículo (neste caso, uma esfera)
+        loader.load("/scene.gltf", (gltf) => {
+            carModel = gltf.scene;
+            carModel.scale.set(0.1, 0.1, 0.1); 
+            scene.add(carModel);
+
+            
+            carModel.position.set(-5, 0, -5); 
+
+            // Defina os pontos de controle para criar um círculo
+            const startPoint = new THREE.Vector3(5, 0, 0);
+            const controlPoint1 = new THREE.Vector3(5, 0, 5);
+            const controlPoint2 = new THREE.Vector3(-5, 0, 5);
+            const endPoint = new THREE.Vector3(-5, 0, 0);
+
+            // Crie a curva de Bezier cúbica
+            const curve = new THREE.CubicBezierCurve3(
+                startPoint,
+                controlPoint1,
+                controlPoint2,
+                endPoint
+            );
+
+            // Criar um caminho para o veículo seguir
+            const points = curve.getPoints(100);
+            const pathGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const pathMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const pathLine = new THREE.Line(pathGeometry, pathMaterial);
+            scene.add(pathLine);
+
+            
+            // Adicionar controles da câmera
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            camera.position.set(0, 2, 5);
+            controls.update();
+
+
+            // Animação
+            const clock = new THREE.Clock();
+            const speed = 0.2; // Velocidade do veículo
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const time = clock.getElapsedTime();
+                const position = curve.getPointAt(time * speed % 1); // Atualiza a posição do veículo
+                carModel.position.copy(position);
+
+                // Orientar o veículo na direção da tangente da curva
+                const tangent = curve.getTangentAt(time * speed % 1).normalize();
+                const axis = new THREE.Vector3(0, 1, 0); // Eixo Y para orientação vertical
+                const angle = Math.atan2(tangent.x, tangent.z);
+                carModel.rotation.y = angle; // Ajusta a rotação em relação ao ângulo
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+        });
+
+    </script>
+</body>
+
+</html>
